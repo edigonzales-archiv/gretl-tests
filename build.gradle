@@ -1,0 +1,67 @@
+plugins {
+    id "com.bmuschko.docker-remote-api" version "3.2.0"
+}
+
+apply plugin: 'java-library'
+apply plugin: 'com.bmuschko.docker-remote-api'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+    jcenter()
+    mavenCentral()
+    maven { url 'http://sogeo.services:8081/artifactory/libs-snapshot' }   
+    maven { url 'http://jars.interlis.ch' }
+}
+
+dependencies {
+    // This dependency is exported to consumers, that is to say found on their compile classpath.
+    api 'org.apache.commons:commons-math3:3.6.1'
+
+    // This dependency is used internally, and not exposed to consumers on their own compile classpath.
+    implementation 'com.google.guava:guava:22.0'
+
+    // Use JUnit test framework
+    testImplementation 'junit:junit:4.12'
+    
+    testImplementation 'ch.so.agi:gretl:1.0.+'
+}
+
+docker {
+    registryCredentials {
+        url = 'https://index.docker.io/v1/'
+    }
+}
+
+import com.bmuschko.gradle.docker.tasks.DockerVersion
+import com.bmuschko.gradle.docker.tasks.DockerInfo
+import com.bmuschko.gradle.docker.tasks.image.DockerPullImage
+import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
+
+task dockerVersion(type: DockerVersion) {}
+task dockerInfo(type: DockerInfo) {}
+
+task pullPostgresDockerImage(type: DockerPullImage) { 
+    repository = 'postgres'
+    tag = '10.0'
+}
+
+task createPostgresDockerContainer(dependsOn: 'pullPostgresDockerImage', type: DockerCreateContainer) {
+    targetImageId { pullPostgresDockerImage.getImageId() }
+    portBindings = ['5432:5432']
+}
+
+task startPostgresDockerContainer(dependsOn: 'createPostgresDockerContainer', type: DockerStartContainer) {
+    targetContainerId { createPostgresDockerContainer.getContainerId() }
+}
+
+
+task fubar(dependsOn: 'pullPostgresDockerImage') { 
+    doLast { 
+        println pullPostgresDockerImage.getImageId()
+    }
+}
+
+
